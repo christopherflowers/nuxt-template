@@ -1,0 +1,44 @@
+image: node:22-alpine
+
+stages:
+  - build
+  - deploy
+
+variables:
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+  NODE_ENV: production
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+    - .nuxt/cache/
+
+before_script:
+  - npm ci --prefer-offline --no-audit
+
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - .output/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+pages:
+  stage: deploy
+  script:
+    - npm run generate
+    - rm -rf public
+    - mv .output/public public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
